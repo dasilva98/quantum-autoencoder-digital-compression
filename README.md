@@ -1,4 +1,4 @@
-# Quantum Autoencoder
+# Digital Compression using a Quantum Autoencoder
 
 Testing the application of an Quantum Autoencoder using IBM’s Qiskit toolkit by accomplishing digital compression on the original MNIST dataset.
 
