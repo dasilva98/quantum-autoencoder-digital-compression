@@ -1,0 +1,5 @@
+/.venv
+/12_qae_initial_point.json
+/input
+/main.py
+/__pycache__
