@@ -1,4 +1,5 @@
 import numpy as np # linear algebra
+# import skimage as ski
 import struct
 from array import array
 from os.path  import join
@@ -30,7 +31,14 @@ class MnistDataloader(object):
         for i in range(size):
             img = np.array(image_data[i * rows * cols:(i + 1) * rows * cols])
             img = img.reshape(28, 28)
-            images[i][:] = img            
+            if i < 50: print("after reshape img: ", img)
+            # img = ski.trans
+            # img = img.resize((32,32), resample='nearest')
+            
+            images[i][:] = img    
+
+        # print(skimage.__version__)
+        # print(ski.__version__)        
         
         return images, labels
             

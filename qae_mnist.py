@@ -19,6 +19,7 @@ from qiskit_algorithms.optimizers import COBYLA
 from qiskit_algorithms.utils import algorithm_globals
 
 from qiskit_machine_learning.circuit.library import RawFeatureVector
+from qiskit.circuit.library import ZZFeatureMap
 from qiskit_machine_learning.neural_networks import SamplerQNN
 
 
@@ -34,7 +35,7 @@ def auto_encoder_circuit(num_latent, num_trash):
     cr = ClassicalRegister(1, "c")
     circuit = QuantumCircuit(qr, cr)
     circuit.compose(ansatz(num_latent + num_trash), range(0, num_latent + num_trash), inplace=True)
-    circuit.barrier() # not mandatory, still unsure if I will need it in the future
+    circuit.barrier() # not mandatory
     auxiliary_qubit = num_latent + 2 * num_trash
     # swap test
     circuit.h(auxiliary_qubit)# h gate
@@ -75,7 +76,7 @@ def show_images(images, title_texts):
     rows = int(len(images)/cols) + 1
     plt.figure(figsize=(12,4))
     index = 1  
-    #plt.colorbar(mappable=plt.cm.gray)  
+    #plt.colorbar(mappable=plt.cm.gray)
     for x in zip(images, title_texts):        
         image = x[0]        
         title_text = x[1]
@@ -123,8 +124,14 @@ num_trash = 2
 
 # A quantum feature map encodes classical data 
 # to the quantum state space by using a quantum circuit
-fm = RawFeatureVector(2 ** (num_latent + num_trash))
 
+#fm = RawFeatureVector(8)
+
+fm = ZZFeatureMap(8, entanglement='linear')
+
+# fm = RawFeatureVector(2 ** (num_latent + num_trash))
+fm.decompose().draw("mpl", style="iqp")
+plt.show()
 ae = auto_encoder_circuit(num_latent, num_trash)
 
 qc = QuantumCircuit(num_latent + 2 * num_trash + 1, 1)
