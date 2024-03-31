@@ -9,6 +9,7 @@ import random
 import matplotlib.pyplot as plt
 
 import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
 from pathlib import Path
 from IPython.display import clear_output
 from qiskit import ClassicalRegister, QuantumRegister
@@ -22,6 +23,7 @@ from qiskit_machine_learning.circuit.library import RawFeatureVector
 from qiskit.circuit.library import ZZFeatureMap
 from qiskit_machine_learning.neural_networks import SamplerQNN
 
+from qiskit.exceptions import QiskitError
 
 algorithm_globals.random_seed = 42
 
@@ -61,6 +63,48 @@ def cost_func_digits(params_values):
 
     return cost
 
+def cost_func_digits_2(params_values):
+
+    x_axis_sample
+    probabilities = qnn.forward(x_axis_sample, params_values)
+    cost = np.sum(probabilities[:, 1]) / len(x_axis_sample)
+
+    objective_func_vals.append(cost)
+
+    return cost
+
+def cost_func_digits_sample(params_values):
+    length = len(x_axis_sample) 
+    try:
+        probabilities = qnn.forward(x_axis_sample, params_values)
+    except QiskitError as e:
+        print("A QiskitError occurred: ", e)
+        # Handle the normalization issue if that's the problem
+        #if 'amplitudes-squared is not 1' in str(e):
+        print("There is a normalization issue with the input state.")
+        # Add additional debugging information or corrective measures here
+        # For example, print out the parameters you used
+        print("Parameters used:", params_values)
+        # Check if parameters contain nan
+        if np.isnan(params_values).any():
+            print("The parameters contain nan values.")
+        # Normalize the parameters if that's the issue
+        norm = np.linalg.norm(params_values)
+        if norm == 0:
+            print("Cannot normalize a zero vector.")
+        else:
+            params_values = params_values / norm
+            print("Normalized parameters:", params_values)
+            # Retry the initialization with the normalized parameters
+            # result = some_qiskit_function_that_might_fail(parameters)
+        cost = np.sum(probabilities[:, 1]) / np.array(x_axis_sample).shape[0] # maybe 'len(x_axis_sample)'?
+        objective_func_vals.append(cost)
+        return cost
+    except Exception as e:
+        # Handle other exceptions that are not QiskitErrors
+        print("An unexpected error occurred: ", e)
+
+    
 
 input_path = 'input\\'
 training_images_filepath = os.path.join(input_path, 'train-images-idx3-ubyte\\train-images-idx3-ubyte')
@@ -93,23 +137,32 @@ def show_images(images, title_texts):
 mnist_dataloader = mnist_loader.MnistDataloader(training_images_filepath, training_labels_filepath)
 x_axis, y_axis = mnist_dataloader.load_data()
 
+print('x_axis: ' + str(np.array(x_axis).shape))
+print('y_axis: ' + str(np.array(y_axis).shape))
+
 #
 # Rescale the images from [0,255] to the [0.0,1.0] range.
 #
 
-#x_axis = np.array(x_axis)  # Convert x_axis to a NumPy array
+x_axis = np.array(x_axis)  # Convert x_axis to a NumPy array
 #x_axis = x_axis[..., np.newaxis]/255.0
+x_axis = x_axis / 255.0
 
-#
 # Show some random images 
-#
-
+x_axis_sample = []
+sample_indexes = []
+y_axis_sample = []
 images_2_show = []
 titles_2_show = []
+    
 for i in range(0, 5):
     r = random.randint(1, len(y_axis))
+    print("x_axis[r]: \n", np.array(x_axis[r]))
     images_2_show.append(x_axis[r])
-    titles_2_show.append('image [' + str(r) + '] = ' + str(y_axis[r]))    
+    titles_2_show.append('image [' + str(r) + '] = ' + str(y_axis[r]))  
+    x_axis_sample.append(x_axis[r])
+    y_axis_sample.append(y_axis[r])
+    sample_indexes.append(r)
 
 show_images(images_2_show, titles_2_show)
 plt.show()
@@ -120,17 +173,15 @@ plt.show()
 
 # Latent and trash qubits
 num_latent = 3
-num_trash = 2
+num_trash = 1
 
 # A quantum feature map encodes classical data 
 # to the quantum state space by using a quantum circuit
 
-#fm = RawFeatureVector(8)
+# fm = ZZFeatureMap(8, entanglement='linear')
 
-fm = ZZFeatureMap(8, entanglement='linear')
-
-# fm = RawFeatureVector(2 ** (num_latent + num_trash))
-fm.decompose().draw("mpl", style="iqp")
+fm = RawFeatureVector(2 ** (num_latent + num_trash))
+# fm.decompose().draw("mpl", style="iqp")
 plt.show()
 ae = auto_encoder_circuit(num_latent, num_trash)
 
@@ -154,12 +205,19 @@ qnn = SamplerQNN(
 opt = COBYLA(maxiter=150)
 initial_point = algorithm_globals.random.random(ae.num_parameters)
 
+# initial_point = np.random.random(10*(num_layers))
+#with open("12_qae_initial_point.json", "r") as f:
+#    initial_point = json.load(f)
+print("ae.num_parameters", ae.num_parameters)
+print("initial_point: ",initial_point)
 objective_func_vals = []
 
 plt.rcParams["figure.figsize"] = (12, 6) # make the plot nicer
 
 start = time.time()
-opt_result = opt.minimize(fun=cost_func_digits,x0=initial_point)
+print("Running optimization..")
+#np.seterr(divide='ignore', invalid='ignore')
+opt_result = opt.minimize(fun=cost_func_digits_2,x0=initial_point) #change 'fun=' parameter to change the sample used
 elapsed = time.time() - start
 print(f"Fit in {elapsed:0.2f} seconds")
 
